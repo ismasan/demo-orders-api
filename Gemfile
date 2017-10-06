@@ -13,3 +13,11 @@ gem 'pusher'
 group :development do
   gem 'foreman'
 end
+
+group :test do
+  gem 'bootic_client'
+  gem 'dotenv'
+  gem 'rspec'
+  gem 'rack-test'
+  gem 'byebug'
+end
