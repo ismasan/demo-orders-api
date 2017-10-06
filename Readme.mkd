@@ -2,6 +2,8 @@
 
 A demo Sinatra REST API to showcase hypermedia ideas.
 
+https://demo-orders-api.herokuapp.com
+
 ### Install
 
 ```
