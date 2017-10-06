@@ -48,6 +48,15 @@
 
       var container = $('#list');
 
+      function fetchOrders (href, fn) {
+        fetch(href).then(json).then(function (list) {
+          list._embedded.items.forEach(fn)
+          if(list._links.next) {
+            fetchOrders(list._links.next.href, fn)
+          }
+        })
+      }
+
       function json(r) {return r.json()}
 
       function row(order) {
@@ -84,9 +93,7 @@
       channel.bind('updates', renderOrder)
       channel.bind('deletes', removeOrder)
 
-      fetch("/orders").then(json).then(function (list) {
-        list._embedded.items.forEach(renderOrder)
-      })
+      fetchOrders('/orders', renderOrder)
     </script>
   </body>
 </html>
