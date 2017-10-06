@@ -72,12 +72,17 @@
         }
       }
 
+      function removeOrder(data) {
+        container.find('#' + data.id).remove()
+      }
+
       var pusher = new Pusher('<%= ENV.fetch('PUSHER_KEY') %>', {
         cluster: 'eu',
         encrypted: true
       });
       var channel = pusher.subscribe('orders');
       channel.bind('updates', renderOrder)
+      channel.bind('deletes', removeOrder)
 
       fetch("/orders").then(json).then(function (list) {
         list._embedded.items.forEach(renderOrder)
