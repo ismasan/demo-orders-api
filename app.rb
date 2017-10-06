@@ -12,6 +12,37 @@ Dir["./serializers/*.rb"].each do |f|
   require f
 end
 
+class Paginator
+  attr_reader :items, :offset, :per_page, :total_items
+  def initialize(items: [], offset: 0, per_page: 5, total_items: 0)
+    @items, @offset, @per_page, @total_items = items, offset, per_page, total_items
+  end
+
+  def current_page
+    offset / per_page + 1
+  end
+
+  def next_page?
+    items_so_far < total_items
+  end
+
+  def previous_page?
+    offset > 0
+  end
+
+  def items_so_far
+    current_page * per_page - (per_page - items.size)
+  end
+
+  def next_offset
+    offset + per_page
+  end
+
+  def previous_offset
+    offset - per_page
+  end
+end
+
 ItemSchema = Parametric::Schema.new do
   field(:name).type(:string).present
   field(:price).type(:integer).default(100)
@@ -36,11 +67,28 @@ class Repo
     data[:updated_on] = Time.now.iso8601
 
     store.set(data[:id], JSON.dump(data))
+    store.zadd 'order_ids', 1, data[:id], nx: true
     data
   end
 
   def delete(id)
     store.del id
+    store.zrem 'order_ids', id
+  end
+
+  def list(offset: 0, per_page: 5)
+    offset = offset.to_i
+    per_page = per_page.to_i
+    total_items = store.zcard('order_ids')
+    range = store.zrange('order_ids', offset, offset + per_page)
+    items = range.map{|id| get(id) }
+
+    Paginator.new(
+      items: items,
+      offset: offset,
+      per_page: per_page,
+      total_items: total_items
+    )
   end
 
   private
@@ -81,10 +129,30 @@ class App < Sinatra::Base
       order[:line_items].delete_if{|it| it[:id] == item_id}
       recalculate order
     end
+
+    def update_order_status(id, status)
+      data = repo.get(id)
+      if data
+        data[:status] = status
+        repo.set data
+        render data, Serializers::Order
+      else
+        render nil, Serializers::NotFound, 404
+      end
+    end
   end
 
   get '/?' do
     render nil, Serializers::Root
+  end
+
+  get '/orders' do
+    list = repo.list(
+      offset: params.fetch(:offset, 0).to_i,
+      per_page: params.fetch(:per_page, 5)
+    )
+
+    render list, Serializers::Orders
   end
 
   post '/orders' do
@@ -134,13 +202,14 @@ class App < Sinatra::Base
   end
 
   put '/orders/:id/placement' do |id|
-    data = repo.get(id)
-    if data
-      data[:status] = 'placed'
-      repo.set data
-      render data, Serializers::Order
-    else
-      render nil, Serializers::NotFound, 404
-    end
+    update_order_status id, 'placed'
+  end
+
+  put '/orders/:id/archive' do |id|
+    update_order_status id, 'archived'
+  end
+
+  put '/orders/:id/completion' do |id|
+    update_order_status id, 'completed'
   end
 end
