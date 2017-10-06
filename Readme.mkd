@@ -1,0 +1,25 @@
+## Demo hypermedia API
+
+A demo Sinatra REST API to showcase hypermedia ideas.
+
+### Install
+
+```
+git clone git@github.com:ismasan/demo-orders-api.git
+cd demo-orders-api
+bundle install
+```
+
+Create `.env` and setup Redis and Pusher credentials
+
+```
+cp env.example .env
+```
+
+### Run
+
+```
+bundle exec foreman start
+# localhost:5000
+```
+
