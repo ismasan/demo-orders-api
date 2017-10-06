@@ -8,6 +8,7 @@ gem 'puma'
 gem 'parametric'
 gem 'oat'
 gem 'redis'
+gem 'pusher'
 
 group :development do
   gem 'foreman'

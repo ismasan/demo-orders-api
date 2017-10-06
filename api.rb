@@ -3,6 +3,7 @@ require 'json'
 require 'redis'
 require 'sinatra/base'
 require 'parametric'
+require 'pusher'
 
 module Serializers
 
@@ -52,8 +53,9 @@ end
 REDIS = Redis.new(url: ENV.fetch('REDIS_URL'))
 
 class Repo
-  def initialize(store)
+  def initialize(store, &notifier)
     @store = store
+    @notifier = block_given? ? notifier : ->(chanel, data){}
   end
 
   def get(id)
@@ -68,12 +70,16 @@ class Repo
 
     store.set(data[:id], JSON.dump(data))
     store.zadd 'order_ids', 1, data[:id], nx: true
+
+    notifier.call(:updates, data)
+
     data
   end
 
   def delete(id)
     store.del id
     store.zrem 'order_ids', id
+    notifier.call(:deletes, {id: id})
   end
 
   def list(offset: 0, per_page: 5)
@@ -92,7 +98,7 @@ class Repo
   end
 
   private
-  attr_reader :store
+  attr_reader :store, :notifier
 end
 
 class Api < Sinatra::Base
@@ -105,8 +111,23 @@ class Api < Sinatra::Base
       )
     end
 
+    def pusher_client
+      @pusher_client ||= Pusher::Client.new(
+        app_id: ENV.fetch('PUSHER_APP_ID'),
+        key: ENV.fetch('PUSHER_KEY'),
+        secret: ENV.fetch('PUSHER_SECRET'),
+        cluster: 'eu',
+        encrypted: true
+      )
+    end
+
     def repo
-      @repo ||= Repo.new(REDIS)
+      @repo ||= Repo.new(REDIS) do |channel, data|
+        if channel == :updates
+          data = Serializers::Order.new(data, helper: self).to_hash
+        end
+        pusher_client.trigger 'orders', channel.to_s, data
+      end
     end
 
     def json_data

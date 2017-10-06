@@ -7,6 +7,7 @@
       th { text-align: left;}
       td, td { padding: 0.2em;}
       tbody td { border-bottom: dotted silver 1px;}
+      .total { text-align: right; }
       .status {
         display: inline-block;
         min-width: 90px;
@@ -39,7 +40,12 @@
       src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
       integrity="sha256-k2WSCIexGzOj3Euiig+TlR8gA0EmPjuc79OEeY5L45g="
       crossorigin="anonymous"></script>
+    <script src="https://js.pusher.com/4.1/pusher.min.js"></script>
     <script>
+      <% if ENV['RACK_ENV'] == 'development' %>
+      Pusher.logToConsole = true;
+      <% end %>
+
       var container = $('#list');
 
       function json(r) {return r.json()}
@@ -49,7 +55,7 @@
         tpl += '<td><span class="status '+order.status+'">'+order.status+'</span></td>'
         tpl += '<td>'+order.id+'</td>'
         tpl += '<td>'+order.created_on+'</td>'
-        tpl += '<td>£'+order.total+'</td>'
+        tpl += '<td class="total">£'+order.total+'</td>'
         tpl += '<td>'+order._embedded.line_items.length+'</td>'
         tpl += '</tr>';
 
@@ -65,6 +71,13 @@
           e.replaceWith(r)
         }
       }
+
+      var pusher = new Pusher('<%= ENV.fetch('PUSHER_KEY') %>', {
+        cluster: 'eu',
+        encrypted: true
+      });
+      var channel = pusher.subscribe('orders');
+      channel.bind('updates', renderOrder)
 
       fetch("/orders").then(json).then(function (list) {
         list._embedded.items.forEach(renderOrder)
