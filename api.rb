@@ -95,7 +95,7 @@ class Repo
   attr_reader :store
 end
 
-class App < Sinatra::Base
+class Api < Sinatra::Base
   helpers do
     def render(item, serializer, st = 200)
       content_type "application/json"

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Orders dashboard - demo</title>
+    <style>
+      th { text-align: left;}
+      td, td { padding: 0.2em;}
+      tbody td { border-bottom: dotted silver 1px;}
+      .status {
+        display: inline-block;
+        min-width: 90px;
+        text-align: center;
+        font-family: monaco, monospace;
+        background: grey;
+        color: white;
+        border-radius: 3px;
+        padding: 2px 5px;
+      }
+      .placed { background-color: orange; }
+      .completed { background-color: green; }
+      .archived { background-color: silver; }
+    </style>
+  </head>
+  <body>
+    <table class="orders">
+      <thead>
+        <th>status</th>
+        <th>id</th>
+        <th>created on</th>
+        <th>total</th>
+        <th>items</th>
+      </thead>
+      <tbody id="list">
+
+      </tbody>
+    </table>
+    <script
+      src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
+      integrity="sha256-k2WSCIexGzOj3Euiig+TlR8gA0EmPjuc79OEeY5L45g="
+      crossorigin="anonymous"></script>
+    <script>
+      var container = $('#list');
+
+      function json(r) {return r.json()}
+
+      function row(order) {
+        var tpl = '<tr id="'+order.id+'">'
+        tpl += '<td><span class="status '+order.status+'">'+order.status+'</span></td>'
+        tpl += '<td>'+order.id+'</td>'
+        tpl += '<td>'+order.created_on+'</td>'
+        tpl += '<td>£'+order.total+'</td>'
+        tpl += '<td>'+order._embedded.line_items.length+'</td>'
+        tpl += '</tr>';
+
+        return $(tpl)
+      }
+
+      function renderOrder(order) {
+        var e = container.find('#' + order.id)
+        var r = row(order)
+        if(e.length == 0) { // append new
+          container.append(r)
+        } else { // update existing
+          e.replaceWith(r)
+        }
+      }
+
+      fetch("/orders").then(json).then(function (list) {
+        list._embedded.items.forEach(renderOrder)
+      })
+    </script>
+  </body>
+</html>
