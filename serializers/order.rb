@@ -17,6 +17,7 @@ module Serializers
 
       order = item
       entities :line_items, (item[:line_items] || []) do |it, s|
+        s.link :delete_line_item, href: url("/orders/#{order[:id]}/line_items/#{it[:id]}"), method: :delete
         s.properties do |props|
           props.id it[:id]
           props.name it[:name]
