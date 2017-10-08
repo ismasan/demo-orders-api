@@ -17,8 +17,13 @@ RSpec.describe 'managing orders', type: [:request] do
     expect(root.orders.map(&:id).sort).to eq [o2.id, o1.id].sort
   end
 
-  it 'adds line items' do
+  it 'adds items to orders' do
+    order = root.create_order
+    order = order.add_line_item(name: 'iPhone 8', price: 100, units: 2)
+    order = order.add_line_item(name: 'Samsung Galaxy', price: 50, units: 1)
 
+    expect(order.line_items.size).to eq 2
+    expect(order.total).to eq 250
   end
 
   it 'removes line item' do

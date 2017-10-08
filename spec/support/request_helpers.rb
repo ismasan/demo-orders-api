@@ -10,11 +10,10 @@ module RequestHelpers
   end
 
   def client
-    BooticClient::Strategies::Bearer.new(
+    BooticClient::Strategies::Strategy.new(
       ClientConfig.new(
         "http://example.org"
       ),
-      access_token: 'abc',
       faraday_adapter: [:rack, app]
     )
   end

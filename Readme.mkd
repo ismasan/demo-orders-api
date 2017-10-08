@@ -103,6 +103,60 @@ if order.can?(:place_order)
 end
 ```
 
+### Testing / dog-fooding
+
+The same client used to consume this type of API can be used to _test it_.
+
+Using Faraday's Rack adapter, we can configure the API client to talk directly to an in-memory Rack object - this API!, without the need to make actual HTTP requests.
+
+This means we can feature-test hypermedia Rack APIs (Rails, Sinatra, etc) in pretty much the same way we use them.
+
+```ruby
+# configure a client using the Rack adapter, and point it to your rack API class
+# for Rspec put this in spec_helper.rb or other support files
+def app
+  Api
+end
+
+def client
+  BooticClient::Strategies::Strategy.new(
+    ClientConfig.new(
+      "http://example.org"
+    ),
+    access_token: 'abc',
+    faraday_adapter: [:rack, app]
+  )
+end
+```
+
+Now you can use the test client to navigate the API in-process, follow links, etc.
+
+```ruby
+it 'creates orders' do
+  root = client.root
+
+  o1 = root.create_order
+  o2 = root.create_order
+
+  expect(o1.id).not_to be_nil
+  expect(o1.status).to eq 'open'
+
+  expect(root.orders.total_items).to eq 2
+  expect(root.orders.map(&:id).sort).to eq [o2.id, o1.id].sort
+end
+
+it 'adds items to orders' do
+  root = client.root
+
+  order = root.create_order
+  order = order.add_line_item(name: 'iPhone 8', price: 100, units: 2)
+  order = order.add_line_item(name: 'Samsung Galaxy', price: 50, units: 1)
+
+  expect(order.line_items.size).to eq 2
+  expect(order.total).to eq 250
+end
+```
+
 ### Install
 
 ```
