@@ -4,6 +4,105 @@ A demo Sinatra REST API to showcase hypermedia ideas.
 
 https://demo-orders-api.herokuapp.com
 
+Super simple real-time dashboard at https://demo-orders-api.herokuapp.com/dashboard
+
+Usage
+
+This is a regular REST-style JSON API, with added links as described in [this](https://robots.thoughtbot.com/writing-a-hypermedia-api-client-in-ruby) blog post.
+
+You can issue requests to it directly.
+
+```
+# create an order
+curl -H "Content-Type: application/json" -X POST https://demo-orders-api.herokuapp.com/orders
+```
+
+The real-time dashboard should show data being updated.
+
+### Ruby client usage
+
+A Hypermedia-aware client can leverage links present in this API's responses to tell you what actions are available.
+
+You can `gem install bootic_client`, a [generic hypermedia client](https://github.com/bootic/bootic_client.rb), and configure it to point to this API's Heroku host. The following script:
+
+```
+# hypermdia-console.rb
+
+require 'bootic_client'
+require 'bootic_client/strategies/strategy'
+config = Struct.new(:api_root).new('https://demo-orders-api.herokuapp.com/')
+CLIENT = BooticClient::Strategies::Strategy.new(config)
+```
+
+Can be launched into an IRB session with
+
+```
+irb -r ./hypermedia-console.rb
+```
+
+The `CLIENT` object is available.
+
+```
+root = CLIENT.root
+=> #<BooticClient::Entity props: [] rels: [self, joe, orders, create_order] entities: []>
+```
+
+The root entity lists "rels" (links) available at [the root endpoint](https://demo-orders-api.herokuapp.com)
+
+You can invoke the listed links to initiate workflows
+
+```
+order = root.create_order
+=> #<BooticClient::Entity props: [id, status, total, created_on, updated_on] rels: [self, add_line_item, delete_order, place_order] entities: [line_items]>
+```
+
+The newly created order lists available properties, links and sub-entities.
+
+You can inspect available links
+
+```
+order.rels[:self]
+#<BooticClient::Relation {"href"=>"https://demo-orders-api.herokuapp.com/orders/6e80354f408b6c4fafc45ef39f6fa241", "name"=>"self"}>
+```
+
+... add line items to an order
+
+```
+order = order.add_line_item(name: 'iPhone 8', price: 100, units: 2)
+order = order.add_line_item(name: 'Samsung Galaxy', price: 50, units: 1)
+=> #<BooticClient::Entity props: [id, status, total, created_on, updated_on] rels: [self, add_line_item, delete_order, place_order] entities: [line_items]>
+```
+
+... iterate an order's line items
+
+```
+order.line_items.map(&:name)
+=> ["iPhone 8", "Samsung Galaxy"]
+```
+
+... Iterates the first page of all orders
+
+```
+root.orders.map &:status
+=> ["open", "open", "open", "completed", "completed", "open"]
+```
+
+... Iterate the entire set of orders (enumerate across all pages)
+
+```
+root.orders.full_set.map &:status
+=> ["open", "open", "open", "completed", "completed", "open", "open", "open", "complete", ...]
+```
+
+API resources will include different links depending on their current status and capabilities. For example, an _open_ order will include `add_line_item` and `place_order` links,
+but a `placed` order will not. Clients can use this knowledge to take appropiate actions depending on the absense or presence of links.
+
+```
+if order.can?(:place_order)
+  order = order.place_order
+end
+```
+
 ### Install
 
 ```
